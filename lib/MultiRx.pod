@@ -1,0 +1,98 @@
+=pod
+First-stage prototype concept for vertical-context regex.
+
+Usage:
+
+my $rx = MultiRX->new(
+	<pieces>
+	);
+	
+# Incremental input:
+while (<>) {
+	chomp; # Or not, I'm not your dad.
+	if ($rx->add_input $_) {
+		say "Match has been found!";
+		say sprintf "Match begins at line %d", $rx->start;
+	}
+}
+if ($rx->finish_input) {
+	say "Match has been found!";
+	say sprintf "Match begins at line %d", $rx->start;
+}
+else {
+	say "No match found";
+}
+$rx->reset;
+
+# Slurped input:
+$rx->add_input <>;
+if ($rx->finish_input) {
+	say "Match has been found!";
+	say sprintf "Match begins at line %d", $rx->start;
+}
+else {
+	say "No match found";
+}
+
+<pieces> is a list of <piece> entries.
+
+Each <piece> can be one of the following items:
+-> qr/regex/ -> Matches the regex against the current line. This effectively acts as the basic unit of the multi-regex.
+	By default, any captures are *discarded* unless it occurs as part of a capture => operation.
+	When a regex is captured it creates a "capture record" which starts with 1 just as like base regexes do.
+	A capture record consists of both the entire matched line as well as all captured subexpressions. See later on how to make use of these.
+
+-> repeat => [ <piece>, <min>, <max> ]
+-> repeat => [ <piece>, lazy => <min>, <max> ]
+-> repeat => [ <piece>, atomic => <min>, <max> ]
+	Repeats the indicated <piece> for a minimum of <min> lines (0 means no minimum) and a maximum of <max> lines.
+	repeat can backtrack, giving up matched lines to try to match later pieces, up to <min>.
+	If <max> is not given, then there is no upper limit.
+	(To specify "exactly N", provide N as both <min> and <max>.)
+	For those familiar with regex, the following shorthands may be used:
+		<piece>, '+' -> <piece>, 1
+		<piece>, '*' -> <piece>, 0
+		<piece>, '?' -> <piece>, 0, 1
+	Like quantifiers in a regex, repeat is greedy by default.
+	If the 'lazy' keyword is applied, the repeat is lazy.
+	If the 'atomic' keyword is applied, then the repeat functions like a possessive quantifier: backtracking within the repeat is not permitted once the
+	repeated group closes.
+	(Note: atomic => repeat and repeat => atomic are directly equivalent.)
+
+-> any => [ <pieces> ]
+	Attempts to match each <piece> in order against the current line, until one of them matches.
+	Can backtrack to try other pieces.
+
+-> [ <pieces> ]
+-> MultiRx object
+	Matches each <piece> in order. Basically acts as a grouping piece.
+
+-> atomic => <piece>
+	As <piece>, but any backtracking points are discarded.
+
+-> capture => <piece>
+	Matches the <piece> and captures its results.
+
+-> assert => <piece>
+	Checks that the given <piece> matches at the current line, but does not actually advance the current line. The equivalent of (?=)
+
+-> not => <piece>
+	Zero-line assertion that <piece> can not match at the current line
+	Captures: nothing
+
+'*VERB' => The following special backtracking verbs described by 'perlre' can be used, and have their usual meaning. Those verbs that allow a ':NAME' likewise
+	do so here, and will set the ->MARK and ->ERROR properties of the multirx in a manner similar to $REGMARK and $REGERROR.
+	You can also set ->MARK or ->ERROR by using the respective verbs within a contained regex, although keep in mind that regex-level verbs will act within
+	a single line.
+	PRUNE, MARK, SKIP, THEN, COMMIT, FAIL, ACCEPT
+	Note: after COMMIT triggers a failure, all input lines are discarded and the multirx is locked in a failure state. You'll need to use the ->reset
+	method if you want to use the multirx with new input.
+	Also note: control verbs you use within a regex will only have effect within that regex.
+	For example, a *MARK in one line can't be used to aim a *SKIP in another.
+	The control verbs used in the multirx list affect the multi-regex as a whole.
+	E.g.: *MARK marks a line, *SKIP can skip the preceding lines,
+	*THEN interacts with an any => [ ] group,
+	etc
+
+=cut
+

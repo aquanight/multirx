@@ -1,0 +1,17 @@
+use v5.30;
+use warnings FATAL => 'all', NONFATAL => qw/exec recursion internal malloc newline experimental deprecated portable/;
+no warnings 'once';
+
+use experimental qw/signatures refaliasing declared_refs/;
+
+use Scalar::Util ();
+use List::Util ();
+use Carp ();
+
+our $VERSION = "0.1";
+
+use Object::Pad;
+
+
+
+1;
